@@ -1,6 +1,6 @@
 #include"wrapper.h"
 void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg); //错误http事务
-
+void static_html(int fd,const char *filename); //打开静态页面
 int main(int argc,char **argv)
 {
     int server_sockert,client_socket,clientlen;
@@ -16,8 +16,7 @@ int main(int argc,char **argv)
 		client_socket = accept(server_sockert,(struct sockaddr*)&client_addr,&clientlen);
 		if(client_socket < 0)
 			perror("accept");
-		
-		err_request(client_socket,"11","404","not find","meiyou faxian");
+		static_html(client_socket,"index.html");
 		close(client_socket);
 	}
 }
@@ -41,5 +40,43 @@ void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg)
     sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
     rio_writen(fd, buf, strlen(buf));
     rio_writen(fd, body, strlen(body));	
+}
+
+void static_html(int fd,const char *filename)
+{
+	  FILE *resource = NULL;  
+    int numchars = 1;  
+    char buf[1024];  
+  
+
+	read(fd,buf,1024);
+  
+    /*打开 sever 的文件*/  
+    resource = fopen(filename, "r");  
+    if (resource == NULL)  
+       printf("cuowu\n");  
+    else  
+    {  
+        /*写 HTTP header */  
+    strcpy(buf, "HTTP/1.0 200 OK\r\n");  
+    send(fd, buf, strlen(buf), 0);  
+    /*服务器信息*/  
+    strcpy(buf,"sadasdsasaddsa");  
+    send(fd, buf, strlen(buf), 0);  
+    sprintf(buf, "Content-Type: text/html\r\n");  
+    send(fd, buf, strlen(buf), 0);  
+    strcpy(buf, "\r\n");  
+    send(fd, buf, strlen(buf), 0);  
+	
+	
+        /*复制文件*/  
+     fgets(buf, sizeof(buf), resource);  
+    while (!feof(resource))  
+    {  
+        send(fd, buf, strlen(buf), 0);  
+        fgets(buf, sizeof(buf), resource);  
+    }  
+    }  
+    fclose(resource);  
 }
 
