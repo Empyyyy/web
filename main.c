@@ -1,5 +1,5 @@
 #include"wrapper.h"
-void accept_request(int client); //处理http事务
+void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg); //错误http事务
 
 int main(int argc,char **argv)
 {
@@ -16,8 +16,30 @@ int main(int argc,char **argv)
 		client_socket = accept(server_sockert,(struct sockaddr*)&client_addr,&clientlen);
 		if(client_socket < 0)
 			perror("accept");
-
+		
+		err_request(client_socket,"11","404","not find","meiyou faxian");
 		close(client_socket);
 	}
+}
+
+void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg)
+{
+		char buf[MAXLINE],body[MAXBUF];
+		
+		    /* Build the HTTP response body */
+    sprintf(body, "<html><title>error request</title>");
+    sprintf(body, "%s<body bgcolor=""ffffff"">\r\n", body);
+    sprintf(body, "%s%s: %s\r\n", body, errnum, shortmsg);
+    sprintf(body, "%s<p>%s: %s\r\n", body, longmsg, cause);
+    sprintf(body, "%s<hr><em> small Web server</em>\r\n", body);
+
+    /* send the HTTP response */ 
+    sprintf(buf, "HTTP/1.0 %s %s\r\n", errnum, shortmsg);
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Content-type: text/html \r\n");
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
+    rio_writen(fd, buf, strlen(buf));
+    rio_writen(fd, body, strlen(body));	
 }
 
