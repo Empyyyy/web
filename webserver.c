@@ -2,10 +2,10 @@
 #define PORT 8080
 #define MAXSIZE 2048
 
-void * process_run(void *v);//服务器运行的主要函数
+void * process_run(void *v);//服务器运行的主要函数 （改为了指针型，实现多线程时需要使用）
 void static_uri(char *uri, char *fileName);//获取静态页面的uri上的文件名
 void static_html(int fd,char *filename);//静态页面处理
-void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg); //错误http事务
+void wrong_req(int fd,char *msg); //错误http事务
 void dynamic_html(int fd, char *filename, char *cgiargs);//动态处理页面
 void test(int fd);//测试
 
@@ -29,6 +29,7 @@ int main()
 		}
 		/* test(conn_sock); */
 		pthread_create(&pid,NULL,process_run,conn_sock);
+		//多线程的实现
 	}
 }
 
@@ -40,19 +41,18 @@ void test(int fd)
 }
 
 
-void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg)
+void wrong_req(int fd,char *msg)
 {
 		char buf[MAXLINE],body[MAXBUF];
 		
 		    /* Build the HTTP response body */
-    sprintf(body, "<html><title>error request</title>");
+    sprintf(body, "<html><title>%s</title>",msg);
     sprintf(body, "%s<body bgcolor=""ffffff"">\r\n", body);
-    sprintf(body, "%s%s: %s\r\n", body, errnum, shortmsg);
-    sprintf(body, "%s<p>%s: %s\r\n", body, longmsg, cause);
-    sprintf(body, "%s<hr><em> small Web server</em>\r\n", body);
+    sprintf(body, "%s<p>%s\r\n", body,msg);
+    sprintf(body, "%s<hr><em> by cj and yzn</em>\r\n", body);
 
     /* send the HTTP response */ 
-    sprintf(buf, "HTTP/1.0 %s %s\r\n", errnum, shortmsg);
+    sprintf(buf, "HTTP/1.0 %s\r\n", msg);
     rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Content-type: text/html \r\n");
     rio_writen(fd, buf, strlen(buf));
@@ -61,11 +61,14 @@ void err_request(int fd,char *cause,char *errnum,char *shortmsg,char *longmsg)
     rio_writen(fd, body, strlen(body));	
 }
 
-void * process_run(void *v)
+void * process_run(void *v) 
 {
+	//多线程的实现
 	int fd =  *((int *)v);
 	pthread_detach(pthread_self());
 	free(v);
+	//多线程的实现
+	
 	int dynamic_flag = 0;//动态态页面的标志
 	struct stat sbuf;//用来描述一个linux系统文件系统中的文件属性的结构。
 	/*可以有两种方法来获取一个文件的属性：
@@ -81,6 +84,7 @@ void * process_run(void *v)
 	char *query_string;
 	char cgiargs[MAXSIZE];
 	
+
 	rio_readinitb(&rio,fd);
 	rio_readlineb(&rio,buf,MAXSIZE);
 	sscanf(buf,"%s%s%s",method,uri,version);
@@ -94,8 +98,8 @@ void * process_run(void *v)
 	//判断方法，不是GET也不是POST则直接跳出
 	if(strcasecmp(method, "GET") && strcasecmp(method, "POST"))
 	{
-		//错误处理，方法错误
-	
+		//错误处理，方法错误 
+		wrong_req(fd,"501 not realized");
 		return NULL;
 	}
 	if(strcasecmp(method, "POST") == 0)
@@ -137,7 +141,7 @@ void static_html(int fd,char *filename)
     /*打开 filename 的文件*/  
     resource = fopen(filename,"r"); 	
     if (resource == NULL)  
-       printf("cuowu\n");  
+       wrong_req(fd,"404 not find"); 
     else  
     {  
         /*写 HTTP header */  
@@ -159,8 +163,8 @@ void static_html(int fd,char *filename)
         send(fd, buf, strlen(buf), 0);  
         fgets(buf, sizeof(buf), resource);  
     }  
-    }  
     fclose(resource);  
+    }  
 }
 
 
@@ -170,7 +174,7 @@ void static_uri(char *uri, char *fileName)
 	strcpy(fileName,".");
 	strcat(fileName,uri);
 	if(uri[strlen(uri)-1] == '/')
-		strcat(fileName,"index.html");
+		strcat(fileName,"index.html"); //index.html为服务器的初始页面
 }
 
 
